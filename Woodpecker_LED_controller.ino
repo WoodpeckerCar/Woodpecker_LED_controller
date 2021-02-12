@@ -2,25 +2,29 @@
 
 // PIN Numbers
 //
-// PIN 2 External Relay
-// PIN 3 LED strip Front Left
+// PIN 2 LED strip Front Left
 // PIN 4 LED strip Right
 // PIN 5 LED strip Left
 // PIN 6 LED strip Rear Right
-// PIN 7 External Relay
-// PIN 8 External Relay
 // PIN 9 CAN
-// PIN 10 External Relay
+// PIN 11 LED strip Front Right
 // PIN 12 LED strip Rear Left
 // PIN 13 Sound Buzzer
-//
-//
-//
-//
+// PIN 22 External Relay  - Low Beam       - 0
+// PIN 24 External Relay  - High Beam      - 1
+// PIN 26 External Relay -  DRL            - 2
+// PIN 28 External Relay - Right Turn      - 3 
+// PIN 30 External Relay - Left Turn       - 4 
+// PIN 32 External Relay  - Brakes -       - 5
+// PIN 34 External Relay  - Reverse Lights - 6
+// PIN 36 External Relay  - Horn -         - 7
+
 
 #include <Adafruit_NeoPixel.h>
-#include <mcp_can.h>
 #include <SPI.h>
+#include "mcp2515_can.h"
+
+unsigned char Distance1m[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09};
 
 #define NUM_LEDS1 72
 #define NUM_LEDS2 72
@@ -30,17 +34,18 @@
 #define NUM_LEDS6 72
 
 #define PIN1 11  // Front Right
-#define PIN2 3  // Front Left
+#define PIN2 2  // Front Left
 #define PIN3 4  // Right
 #define PIN4 5  // Left
 #define PIN5 6  // Rear Right
 #define PIN6 12  // Rear Left
 int piezoPin = 13; //Sound buzzer
-byte relayPin[4] = {    //Relay module pins
-  2,7,8,10};
-const int SPI_CS_PIN = 9; //CANbus module 
+byte relayPin[8] = {    //Relay module pins
+  22,24,26,28,30,32,34,36};
 
-MCP_CAN CAN(SPI_CS_PIN);                                    // Set CS pin
+const int SPI_CS_PIN = 9;
+mcp2515_can CAN(SPI_CS_PIN); // Set CS pin                                  // Set CS pin s
+
 const int ledHIGH    = 1;
 const int ledLOW     = 0;
 unsigned char stmp[8] = {ledHIGH, 1, 2, 3, ledLOW, 5, 6, 7};
@@ -93,6 +98,13 @@ int DRLState=0;
 void setup() {
   // initialize serial communication:
   Serial.begin(115200);
+      while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
+    {
+        Serial.println("CAN BUS Shield init fail");
+        Serial.println(" Init CAN BUS Shield again");
+        delay(100);
+    }
+    Serial.println("CAN BUS Shield init ok!");
   for(int i = 0; i < 4; i++)  pinMode(relayPin[i],OUTPUT);
   for(int j = 0; j < 4; j++)  digitalWrite(relayPin[j],LOW);
   strip1.begin();
@@ -108,20 +120,292 @@ void setup() {
   strip6.begin();
   strip6.show();
   ClearAllLeds();
-  demorun();      
- // while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
- //   {
- //      Serial.println("CAN BUS Shield init fail");
- //       Serial.println(" Init CAN BUS Shield again");
- //       delay(100);
- //   }
- //  Serial.println("CAN BUS Shield init ok!");
+  Serial.println("Starting DemoRun - Startup");
+//  demorun();      
+
 }
 
-                              void loop() {
+
+// ***************************************LOOP***************************************
+ void loop() {
      demorun(); 
+       //                         Serial.println("LeftTurnState, RightTurnState, HazardState, LowBeamState, HighBeamState, BrakeLightState, DRLState");
+       //                         Serial.print(LeftTurnState);
+       //                         Serial.print(RightTurnState);
+       //                         Serial.print(HazardState);
+       //                         Serial.print(LowBeamState);
+       //                         Serial.print(HighBeamState);
+       //                         Serial.print(BrakeLightState);
+       //                         Serial.print(DRLState);
+       //                         Serial.println();
+     CAN.sendMsgBuf(0x401, 0, 8, Distance1m);                                       
+                               if (Serial.available() > 0) {
+                                  int inByte = Serial.read();
+                              
+                                   switch (inByte) {
+                                     case '0':
+                                      Serial.println("Switch OFF");
+                                     ClearAllLedsandRelays();
+                                     break;  
+                                     case '1':
+                                      Serial.println("Front Right Test");
+                                       strip1.setBrightness(80);
+                                       setAll1(255, 255, 255);
+                                       strip1.show();
+                                     break;
+                                     case '2':
+                                      Serial.println("Front Left Test");
+                                       strip2.setBrightness(80);
+                                       setAll2(255, 255, 255);
+                                       strip2.show();
+                                     break;
+                                     case '3':
+                                      Serial.println("Right Test");
+                                       strip3.setBrightness(80);
+                                       setAll3(255, 255, 255);
+                                       strip3.show();
+                                     break;  
+                                     case '4':
+                                       Serial.println("Left Test");
+                                       strip4.setBrightness(80);
+                                       setAll4(255, 255, 255);
+                                       strip4.show();
+                                     break;  
+                                     case '5':
+                                       Serial.println("Rear Right Test");
+                                       strip5.setBrightness(80);
+                                       setAll5(255, 255, 255);
+                                       strip5.show();
+                                     break;  
+                                     case '6':
+                                       Serial.println("Rear Left Test");
+                                       strip6.setBrightness(80);
+                                       setAll6(255, 255, 255);
+                                       strip6.show();
+                                     break; 
+                                     case '7':
+                                      Serial.println("Strobe White");
+                                          // Strobe - Color (red, green, blue), number of flashes, flash speed, end pause
+                                              StrobeLeft(255, 255, 255, 5, 40, 100); //White
+                                              StrobeRight(255, 255, 255, 5, 40, 100); //White
+                                              StrobeLeft(255, 255, 255, 5, 40, 100); //White
+                                              StrobeRight(255, 255, 255, 5, 40, 100); //White
+                                              StrobeLeft(255, 255, 255, 5, 40, 100); //White
+                                              StrobeRight(255, 255, 255, 5, 40, 100); //White
+                                              StrobeLeft(255, 255, 255, 5, 40, 100); //White
+                                              StrobeRight(255, 255, 255, 5, 40, 100); //White
+                              
+                                     break;
+                                     case '8':
+                                      Serial.println("Strobe Police Blue");
+                                          // Strobe - Color (red, green, blue), number of flashes, flash speed, end pause
+                                              StrobeLeft(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeRight(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeLeft(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeRight(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeLeft(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeRight(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeLeft(0, 0, 255, 5, 40, 100); //Blue
+                                              StrobeRight(0, 0, 255, 5, 40, 100); //Blue
+                                     break;
+                                     case '9':
+                                      Serial.println("Set Brakes Front");
+                                       ClearLights1();
+                                       ClearLights2();
+                                       strip1.setBrightness(255);
+                                       setAll1(255, 0, 0);
+                                       strip2.setBrightness(255);
+                                       setAll2(255, 0, 0);
+                                       break;
+                                     case 'p':
+                                      Serial.println("Set All Orange");
+                                       ClearLights1();
+                                       ClearLights2();
+                                       ClearLights3();
+                                       ClearLights4();
+                                       ClearLights5();
+                                       ClearLights6();
+                                       strip1.setBrightness(255);
+                                       setAll1(255, 165, 0);
+                                       strip2.setBrightness(255);
+                                       setAll2(255, 165, 0);
+                                       strip3.setBrightness(255);
+                                       setAll3(255, 165, 0);
+                                       strip4.setBrightness(255);
+                                       setAll4(255, 165, 0);
+                                       strip5.setBrightness(255);
+                                       setAll5(255, 165, 0);
+                                       strip6.setBrightness(255);
+                                       setAll6(255, 165, 0);
+                                       break;
+                                     case 'q':
+                                      Serial.println("Hazard ON");
+                                          setAll1(0,0,0);
+                                          setAll2(0,0,0);
+                                          setAll5(0,0,0);
+                                          setAll6(0,0,0);
+                                       strip1.setBrightness(255);
+                                       setAll1(255, 165, 0);
+                                       strip2.setBrightness(255);
+                                       setAll2(255, 165, 0);
+                                       strip5.setBrightness(255);
+                                       setAll5(255, 165, 0);
+                                       strip6.setBrightness(255);
+                                       setAll6(255, 165, 0);
+                                       delay(3000);
+                                          setAll1(0,0,0);
+                                          setAll2(0,0,0);
+                                          setAll5(0,0,0);
+                                          setAll6(0,0,0);
+                                        strip1.setBrightness(255);
+                                       setAll1(255, 165, 0);
+                                       strip2.setBrightness(255);
+                                       setAll2(255, 165, 0);
+                                       strip5.setBrightness(255);
+                                       setAll5(255, 165, 0);
+                                       strip6.setBrightness(255);
+                                       setAll6(255, 165, 0);   
+                                                delay(3000);
+                                          setAll1(0,0,0);
+                                          setAll2(0,0,0);
+                                          setAll5(0,0,0);
+                                          setAll6(0,0,0);
+                                        strip1.setBrightness(255);
+                                       setAll1(255, 165, 0);
+                                       strip2.setBrightness(255);
+                                       setAll2(255, 165, 0);
+                                       strip5.setBrightness(255);
+                                       setAll5(255, 165, 0);
+                                       strip6.setBrightness(255);
+                                       setAll6(255, 165, 0);          
+                                       break;
+                                       case 'w':
+                                      Serial.println("Turn Signal Right");
+                                      count = 5;
+                                      turnsignalright();
+                                       break;
+                                      case 'e':
+                                      Serial.println("Turn Signal Left");
+                                      count = 5;
+                                      turnsignalleft();
+                                       break;
+                                      case 'r':
+                                      Serial.println("Hazard");
+                                      count = 5;
+                                      turnsignalhazard();
+                                       break;
+                                     case 't':
+                                      Serial.println("Running Lights Front");
+                                      runninglightsfront();
+                                       break;
+                                     case 'y':
+                                      Serial.println("Running Lights Rear");
+                                      runninglightsraer();
+                                       break;
+                                     case 'u':
+                                      Serial.println("Brakes Rear");
+                                      brakesrear();
+                                      break;
+                                     case 'i':
+                                      Serial.println("Brakes Front");
+                                      brakesfront();
+                                      break;
+                                     case 'o':
+                                      Serial.println("Danger");
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      Danger(255, 255, 0, 4, 40, 100);
+                                      delay(500);
+                                      break;
+                                     case 'z':
+                                      Serial.println("Buzzer 1");
+                                        initsound();
+                                      break;
+                                      case 'x':
+                                      Serial.println("Buzzer 2");
+                                      backupsound();
+                                       break;  
+                                      case 'c':
+                                      Serial.println("Low Beams ON");
+                                      lowbeamON();
+                                       break; 
+                                      case 'v':
+                                      Serial.println("Low Beams OFF");
+                                      lowbeamOFF();
+                                       break;  
+                                     case 'b':
+                                      Serial.println("High Beams ON");
+                                      highbeamON();
+                                       break; 
+                                      case 'n':
+                                      Serial.println("High Beams OFF");
+                                      highbeamOFF();
+                                       break;  
+                                      case 'm':
+                                      Serial.println("DEMO Run");
+                                       demorun();   
+                                       break;  
+                                     case 'a':
+                                      Serial.println("Reverse ON");
+                                       reverselightsON();   
+                                       break;
+                                     case 's':
+                                      Serial.println("Horn ON");
+                                       hornON();
+                                       delay (200);  
+                                       Serial.println("Horn OFF");
+                                       hornOFF();
+                                       break;
+                                     case 'd':
+                                      Serial.println("Relay Test");
+                                       digitalWrite(relayPin[0],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[0],HIGH);
+                                       delay (500);                                        
+                                       digitalWrite(relayPin[1],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[1],HIGH); 
+                                       delay (500);                                      
+                                       digitalWrite(relayPin[2],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[2],HIGH);
+                                       delay (500);                           
+                                       digitalWrite(relayPin[3],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[3],HIGH);  
+                                       delay (500);                                      
+                                       digitalWrite(relayPin[4],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[4],HIGH);
+                                       delay (500);                                        
+                                       digitalWrite(relayPin[5],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[5],HIGH);
+                                       delay (500);                                        
+                                       digitalWrite(relayPin[6],LOW);
+                                       delay (500); 
+                                       digitalWrite(relayPin[6],HIGH);
+                                       delay (500);                                        
+                                       digitalWrite(relayPin[7],LOW);
+                                       delay (500);  
+                                       digitalWrite(relayPin[7],HIGH);
+                                       break;
+                                      }
                               }
-   
+                              }
+
 
 // ***************************************
 // Clear Lights ///
@@ -496,7 +780,8 @@ void turnsignalright() {
            strip3.show();
     strip1.show();  
     strip5.show(); 
-    headlightturnON();
+//    headlightturnON();
+    rightturnON ();
       delay(1000);       
     count = count -1;
     strip1.fill(nocolor, 0, NUMPIXELS1);
@@ -505,7 +790,8 @@ void turnsignalright() {
     strip1.show();
     strip3.show(); 
     strip5.show(); 
-    headlightturnOFF();
+//    headlightturnOFF();
+    rightturnOFF ();
 }
 }
 
@@ -547,7 +833,8 @@ delay(500);
         strip4.show();
     strip2.show(); 
     strip6.show();
-    headlightturnON(); 
+//    headlightturnON(); 
+    lefttturnON ();
       delay(1000);       
     count = count -1;
     strip2.fill(nocolor, 0, NUMPIXELS1);
@@ -556,7 +843,8 @@ delay(500);
     strip2.show(); 
     strip4.show(); 
     strip6.show(); 
-    headlightturnOFF();
+ //   headlightturnOFF();
+      leftturnOFF ();
 }
 }
 
@@ -629,7 +917,9 @@ delay(500);
     strip2.show();   
     strip5.show(); 
     strip6.show();
-    headlightturnON();  
+//    headlightturnON(); 
+    rightturnON ();
+    lefttturnON ();
       delay(1000);       
     count = count -1;
     strip1.fill(nocolor, 0, NUMPIXELS1);
@@ -640,7 +930,9 @@ delay(500);
     strip2.show(); 
     strip5.show(); 
     strip6.show(); 
-    headlightturnOFF();
+//    headlightturnOFF();
+     rightturnOFF ();
+     leftturnOFF ();
 }
 }
 
@@ -756,7 +1048,7 @@ void brakesrear() {
     strip6.setBrightness(255);
     strip6.fill(red, 0, NUMPIXELS1);
     strip6.show();
-//    digitalWrite(relayPin[0],HIGH);     
+    digitalWrite(relayPin[5],LOW);     
 //    delay(3000);       
 //    strip5.fill(nocolor, 0, NUMPIXELS1);
 //    strip6.fill(nocolor, 0, NUMPIXELS1);
@@ -772,7 +1064,7 @@ void brakesrearOFF() {
     strip6.fill(nocolor, 0, NUMPIXELS1);
     strip5.show(); 
     strip6.show();
-//    digitalWrite(relayPin[0],LOW);
+    digitalWrite(relayPin[5],HIGH);
      
 }
 
@@ -783,13 +1075,13 @@ void brakesfront() {
     strip2.setBrightness(255);
     strip2.fill(red, 0, NUMPIXELS1);
     strip2.show(); 
-//    digitalWrite(relayPin[0],HIGH);   
+    digitalWrite(relayPin[5],LOW);   
     delay(3000);       
     strip1.fill(nocolor, 0, NUMPIXELS1);
     strip2.fill(nocolor, 0, NUMPIXELS1);
     strip1.show(); 
     strip2.show();
-//    digitalWrite(relayPin[0],LOW);
+    digitalWrite(relayPin[5],HIGH);
 }
 
                           void demorun() {
@@ -875,10 +1167,14 @@ void FadeOut1(byte red, byte green, byte blue){
             setAll4(0,0,0);
             setAll5(0,0,0);
             setAll6(0,0,0);  
-            digitalWrite(relayPin[0],LOW);
-            digitalWrite(relayPin[1],LOW);
-            digitalWrite(relayPin[2],LOW);
-            digitalWrite(relayPin[3],LOW);
+            digitalWrite(relayPin[0],HIGH);
+            digitalWrite(relayPin[1],HIGH);
+            digitalWrite(relayPin[2],HIGH);
+            digitalWrite(relayPin[3],HIGH);
+            digitalWrite(relayPin[4],HIGH);
+            digitalWrite(relayPin[5],HIGH);
+            digitalWrite(relayPin[6],HIGH);
+            digitalWrite(relayPin[7],HIGH);
  }
 
 void Danger (byte red, byte green, byte blue, int StrobeCount, int FlashDelay, int EndPause){
@@ -1080,43 +1376,69 @@ void initsound(){
   }
 
 void lowbeamON() {
-   digitalWrite(relayPin[0],HIGH);
-
-}
-
-void lowbeamOFF() {
    digitalWrite(relayPin[0],LOW);
 
 }
 
-void highbeamON() {
-   digitalWrite(relayPin[1],HIGH);
+void lowbeamOFF() {
+   digitalWrite(relayPin[0],HIGH);
 
 }
 
-void highbeamOFF() {
+void highbeamON() {
    digitalWrite(relayPin[1],LOW);
 
 }
 
-void headlightDRLON() {
-   digitalWrite(relayPin[2],HIGH);
+void highbeamOFF() {
+   digitalWrite(relayPin[1],HIGH);
 
 }
 
-void headlightDRLOFF() {
+void headlightDRLON() {
    digitalWrite(relayPin[2],LOW);
 
 }
 
-void headlightturnON() {
+void headlightDRLOFF() {
+   digitalWrite(relayPin[2],HIGH);
+
+}
+
+//void headlightturnON() {
+void rightturnON() {
+   digitalWrite(relayPin[3],LOW);
+
+}
+
+//void headlightturnOFF() {
+void rightturnOFF() {  
    digitalWrite(relayPin[3],HIGH);
 
 }
 
-void headlightturnOFF() {
-   digitalWrite(relayPin[3],LOW);
+void lefttturnON() {
+   digitalWrite(relayPin[4],LOW);
+}
 
+void leftturnOFF() {  
+   digitalWrite(relayPin[4],HIGH);
+}
+
+void reverselightsON() {
+   digitalWrite(relayPin[6],LOW);
+}
+
+void reverselightsOFF() {  
+   digitalWrite(relayPin[6],HIGH);
+}
+
+void hornON() {
+   digitalWrite(relayPin[7],LOW);
+}
+
+void hornOFF() {  
+   digitalWrite(relayPin[7],HIGH);
 }
 
 void turnsignalleftindef() {
@@ -1156,7 +1478,8 @@ delay(500);
         strip4.show();
     strip2.show(); 
     strip6.show();
-    headlightturnON(); 
+ //   headlightturnON(); 
+     lefttturnON();
       delay(1000);       
     strip2.fill(nocolor, 0, NUMPIXELS1);
     strip4.fill(nocolor, 0, NUMPIXELS1);
@@ -1164,7 +1487,8 @@ delay(500);
     strip2.show(); 
     strip4.show(); 
     strip6.show(); 
-    headlightturnOFF();
+ //   headlightturnOFF();
+    leftturnOFF();
 }
 
 void turnsignalrightindef() {
@@ -1207,7 +1531,8 @@ void turnsignalrightindef() {
            strip3.show();
     strip1.show();  
     strip5.show(); 
-    headlightturnON();
+//    headlightturnON();
+    rightturnON;
       delay(1000);       
     strip1.fill(nocolor, 0, NUMPIXELS1);
     strip3.fill(nocolor, 0, NUMPIXELS1);
@@ -1215,7 +1540,8 @@ void turnsignalrightindef() {
     strip1.show();
     strip3.show(); 
     strip5.show(); 
-    headlightturnOFF();
+ //   headlightturnOFF();
+    rightturnOFF ();
 }
 
 void turnsignalhazardindef() {
@@ -1286,7 +1612,9 @@ delay(500);
     strip2.show();   
     strip5.show(); 
     strip6.show();
-    headlightturnON();  
+//    headlightturnON(); 
+    rightturnON ();
+    lefttturnON ();
       delay(1000);       
     strip1.fill(nocolor, 0, NUMPIXELS1);
     strip2.fill(nocolor, 0, NUMPIXELS1);
@@ -1296,6 +1624,7 @@ delay(500);
     strip2.show(); 
     strip5.show(); 
     strip6.show(); 
-    headlightturnOFF();
+ //   headlightturnOFF();
+     rightturnOFF ();
+     leftturnOFF ();
 }
-
