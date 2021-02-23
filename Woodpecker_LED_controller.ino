@@ -1,11 +1,11 @@
 // Woodpecker  http://woodpecker.mobi   
-
 // PIN Numbers
 //
-// PIN 2 LED strip Front Left
+
+// PIN 3 LED strip Front Left
 // PIN 4 LED strip Right
 // PIN 5 LED strip Left
-// PIN 6 LED strip Rear Right
+// PIN 6 LED strip Rear Right - changed to 2
 // PIN 9 CAN
 // PIN 11 LED strip Front Right
 // PIN 12 LED strip Rear Left
@@ -24,8 +24,6 @@
 #include <SPI.h>
 #include "mcp2515_can.h"
 
-unsigned char Distance1m[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09};
-
 #define NUM_LEDS1 72
 #define NUM_LEDS2 72
 #define NUM_LEDS3 144
@@ -33,22 +31,23 @@ unsigned char Distance1m[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09};
 #define NUM_LEDS5 72
 #define NUM_LEDS6 72
 
-#define PIN1 11  // Front Right
-#define PIN2 2  // Front Left
-#define PIN3 4  // Right
-#define PIN4 5  // Left
-#define PIN5 6  // Rear Right
-#define PIN6 12  // Rear Left
-int piezoPin = 13; //Sound buzzer
+#define PIN1 44  // Front Right
+#define PIN2 47  // Front Left
+#define PIN3 49  // Right
+#define PIN4 48  // Left
+#define PIN5 46  // Rear Right
+#define PIN6 42  // Rear Left
+int piezoPin = 40; //Sound buzzer
 byte relayPin[8] = {    //Relay module pins
   22,24,26,28,30,32,34,36};
 
+
 const int SPI_CS_PIN = 9;
-mcp2515_can CAN(SPI_CS_PIN); // Set CS pin                                  // Set CS pin s
+mcp2515_can CAN(SPI_CS_PIN); // Set CS pin  
 
 const int ledHIGH    = 1;
 const int ledLOW     = 0;
-unsigned char stmp[8] = {ledHIGH, 1, 2, 3, ledLOW, 5, 6, 7};
+//unsigned char stmp[8] = {ledHIGH, 1, 2, 3, ledLOW, 5, 6, 7};
 
 
 #define NUMPIXELS1 72
@@ -98,15 +97,8 @@ int DRLState=0;
 void setup() {
   // initialize serial communication:
   Serial.begin(115200);
-      while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
-    {
-        Serial.println("CAN BUS Shield init fail");
-        Serial.println(" Init CAN BUS Shield again");
-        delay(100);
-    }
-    Serial.println("CAN BUS Shield init ok!");
-  for(int i = 0; i < 4; i++)  pinMode(relayPin[i],OUTPUT);
-  for(int j = 0; j < 4; j++)  digitalWrite(relayPin[j],LOW);
+  for(int i = 0; i < 8; i++)  pinMode(relayPin[i],OUTPUT);
+  for(int j = 0; j < 8; j++)  digitalWrite(relayPin[j],HIGH);
   strip1.begin();
   strip1.show();
   strip2.begin();
@@ -120,15 +112,18 @@ void setup() {
   strip6.begin();
   strip6.show();
   ClearAllLeds();
-  Serial.println("Starting DemoRun - Startup");
-//  demorun();      
-
+ 
+    while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
+   {
+       Serial.println("CAN BUS Shield init fail");
+      Serial.println(" Init CAN BUS Shield again");
+        delay(100);
+    }
+    Serial.println("CAN BUS Shield init ok!");
+//    demorun();  
 }
-
-
-// ***************************************LOOP***************************************
  void loop() {
-     demorun(); 
+  //   demorun(); 
        //                         Serial.println("LeftTurnState, RightTurnState, HazardState, LowBeamState, HighBeamState, BrakeLightState, DRLState");
        //                         Serial.print(LeftTurnState);
        //                         Serial.print(RightTurnState);
@@ -138,9 +133,34 @@ void setup() {
        //                         Serial.print(BrakeLightState);
        //                         Serial.print(DRLState);
        //                         Serial.println();
-     CAN.sendMsgBuf(0x401, 0, 8, Distance1m);                                       
+
+ 
+ //----------------------------START of CAN RECIEVE Message ---------------------------   
+    
+    if(CAN_MSGAVAIL == CAN.checkReceive())  
+    {    
+       CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf   
+       unsigned long canId = CAN.getCanId();
+       CanMessage="";
+       canId = CAN.getCanId();
+     
+      if (canId==0x052)
+        {
+        Serial.println("CAN ID: 52");
+        runninglightsfront();
+        };
+       if (canId==0x053)
+        {
+       Serial.println("CAN ID: 53");
+       ClearAllLedsandRelays();
+        };
+    }
+
+ //----------------------------END of CAN RECIEVE Message ---------------------------                                       
+                             
                                if (Serial.available() > 0) {
                                   int inByte = Serial.read();
+                                  
                               
                                    switch (inByte) {
                                      case '0':
@@ -405,7 +425,7 @@ void setup() {
                                       }
                               }
                               }
-
+//------------------END MAIN LOOP -------------------------------------------
 
 // ***************************************
 // Clear Lights ///
@@ -1356,8 +1376,9 @@ void initsound(){
           delay(500);
           tone(piezoPin, 2000, 500);
           delay(500);
-          tone(piezoPin, 1000, 200);
-             Serial.println("sound is ON");
+          tone(piezoPin, 1000, 500);
+          delay(500);
+          Serial.println("sound is ON");
   }
 
   void backupsound(){
