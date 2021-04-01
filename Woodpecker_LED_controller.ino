@@ -148,11 +148,13 @@ void setup() {
         {
         Serial.println("CAN ID: 52");
         runninglightsfront();
+        lowbeamON();
         };
        if (canId==0x053)
         {
        Serial.println("CAN ID: 53");
        ClearAllLedsandRelays();
+       lowbeamOFF();
         };
     }
 
