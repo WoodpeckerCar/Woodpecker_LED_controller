@@ -157,10 +157,26 @@ ClearAllLedsandRelays();
        ClearAllLedsandRelays();
        lowbeamOFF();
         };
- //     if (canId==0x060)
- //       {
- //       brakesrear();
- //       };
+//      if (canId==0x060)
+//       {
+//          //Build Complete Message Without CAN ID From BUS
+//          for(int i = 0; i<len; i++)    // print the data
+//          {
+//            CanMessage = CanMessage + buf[i];
+//          }
+//  
+//          Serial.print("CanMessage=");
+//          Serial.println(CanMessage);
+//        };
+//      if (canId==0x060 && CanMessage != 5204000000)
+//        {
+//       brakesrear();
+//        };
+//      if (canId==0x060 && CanMessage == 5204000000)
+//        {
+//       brakesrearOFF();
+//        };
+       
       if (canId==0x530)
         {
          lowbeamON();
