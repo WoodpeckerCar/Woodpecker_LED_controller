@@ -120,7 +120,10 @@ void setup() {
         delay(100);
     }
     Serial.println("CAN BUS Shield init ok!");
-//    demorun();  
+//    demorun(); 
+initsound();
+Initialization(0, 0, 250, 8, 1000, 0); //red, green, blue, EyeSize, SpeedDelay, ReturnDelay 
+ClearAllLedsandRelays();
 }
  void loop() {
   //   demorun(); 
@@ -146,16 +149,67 @@ void setup() {
      
       if (canId==0x052)
         {
-        Serial.println("CAN ID: 52");
         runninglightsfront();
         lowbeamON();
         };
-       if (canId==0x053)
+      if (canId==0x053)
         {
-       Serial.println("CAN ID: 53");
        ClearAllLedsandRelays();
        lowbeamOFF();
         };
+ //     if (canId==0x060)
+ //       {
+ //       brakesrear();
+ //       };
+      if (canId==0x530)
+        {
+         lowbeamON();
+         Serial.println("Low Beams ON");
+        };
+      if (canId==0x531)
+        {
+         lowbeamOFF();
+        };
+      if (canId==0x532)
+        {
+         highbeamON();
+        };
+      if (canId==0x533)
+        {
+         highbeamOFF();
+        };
+      if (canId==0x534)
+        {
+         hornON();
+        };
+      if (canId==0x535)
+        {
+         count = 1;
+         turnsignalright();
+        };
+       if (canId==0x536)
+        {
+         count = 1;
+         turnsignalleft();
+        };
+       if (canId==0x537)
+        {
+         count = 1;
+         turnsignalhazard();
+        };
+       if (canId==0x538)
+        {
+         runninglightsfront();
+        };
+       if (canId==0x539)
+        {
+         runninglightsrear();
+        };
+       if (canId==0x540)
+        {
+          ClearAllLedsandRelays();
+        };
+        
     }
 
  //----------------------------END of CAN RECIEVE Message ---------------------------                                       
@@ -322,7 +376,7 @@ void setup() {
                                        break;
                                      case 'y':
                                       Serial.println("Running Lights Rear");
-                                      runninglightsraer();
+                                      runninglightsrear();
                                        break;
                                      case 'u':
                                       Serial.println("Brakes Rear");
@@ -814,6 +868,7 @@ void turnsignalright() {
     strip5.show(); 
 //    headlightturnOFF();
     rightturnOFF ();
+    ClearAllLedsandRelays();
 }
 }
 
@@ -867,6 +922,7 @@ delay(500);
     strip6.show(); 
  //   headlightturnOFF();
       leftturnOFF ();
+      ClearAllLedsandRelays();
 }
 }
 
@@ -955,6 +1011,7 @@ delay(500);
 //    headlightturnOFF();
      rightturnOFF ();
      leftturnOFF ();
+     ClearAllLedsandRelays();
 }
 }
 
@@ -1011,7 +1068,7 @@ void runninglightsfront() {
         strip4.show();
 }
 
-void runninglightsraer() {
+void runninglightsrear() {
   ClearAllLeds ();
     strip1.setBrightness(50);
     strip1.fill(red, 0, NUMPIXELS1);
@@ -1121,31 +1178,31 @@ void brakesfront() {
                               highbeamOFF();
                               delay(3000);
                               headlightDRLOFF();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               count = 5;
                               turnsignalleft();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(2000);
                               count = 5;
                               turnsignalright();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(2000);
                               count = 5;
                               turnsignalhazard();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               brakesfront();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               dangerall();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               strobewhite();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               strobepolice();
-                              runninglightsraer();
+                              runninglightsrear();
                               delay(3000);
                               ClearAllLeds ();
                           }
@@ -1374,13 +1431,13 @@ while(count > 0 ) {
 }
 }
 void initsound(){
-          tone(piezoPin, 1000, 500);
+          tone(piezoPin, 1000, 400);
+          delay(300);
+          tone(piezoPin, 1300, 400);
+          delay(300);
+          tone(piezoPin, 1600, 400);
           delay(500);
-          tone(piezoPin, 2000, 500);
-          delay(500);
-          tone(piezoPin, 1000, 500);
-          delay(500);
-          Serial.println("sound is ON");
+    //      Serial.println("sound is ON");
   }
 
   void backupsound(){
